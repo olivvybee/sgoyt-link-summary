@@ -96,4 +96,7 @@ const argv = yargs(hideBin(process.argv))
   .demandOption('game')
   .parseSync();
 
-run({ username: argv.username, gameId: argv.game });
+const matchUrl = argv.game.match(/boardgamegeek\.com\/boardgame\/(\d+)/);
+const gameId = matchUrl ? matchUrl[1] : argv.game;
+
+run({ username: argv.username, gameId });

@@ -13,3 +13,7 @@ This will find all previous SGOYT entries for the given user playing the given
 game (including if it was logged as one of that game's expansions). It will then
 copy BGG forum code to the clipboard with a list of links to those previous
 entries.
+
+The `-g` parameter can also be a full BGG URL (e.g.
+`https://boardgamegeek.com/boardgame/353545/next-station-london`) instead of
+just the ID number.
