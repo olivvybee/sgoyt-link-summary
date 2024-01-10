@@ -1,6 +1,8 @@
 import path from 'path';
 import fs from 'fs';
 
+import yargs from 'yargs';
+import { hideBin } from 'yargs/helpers';
 import _orderBy from 'lodash/orderBy';
 import clipboard from 'clipboardy';
 
@@ -79,4 +81,19 @@ const run = async ({ username, gameId }: RunArgs) => {
   fs.writeFileSync(dataPath, JSON.stringify(data, null, 2));
 };
 
-run({ username: 'olivvybee', gameId: '266192' });
+const argv = yargs(hideBin(process.argv))
+  .option('username', {
+    alias: 'u',
+    type: 'string',
+    description: 'BGG username to find entries for',
+  })
+  .option('game', {
+    alias: 'g',
+    type: 'string',
+    description: 'BGG ID of the game to find entries for',
+  })
+  .demandOption('username')
+  .demandOption('game')
+  .parseSync();
+
+run({ username: argv.username, gameId: argv.game });
