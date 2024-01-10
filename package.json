@@ -1,0 +1,25 @@
+{
+  "name": "sgoyt-link-summary",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.ts",
+  "type": "module",
+  "scripts": {
+    "start": "tsx ./index.ts"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/lodash": "^4.14.202",
+    "@types/node": "^18.19.6",
+    "clipboardy": "^4.0.0",
+    "fast-xml-parser": "^4.3.2",
+    "lodash": "^4.17.21",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3",
+    "yargs": "^17.7.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
