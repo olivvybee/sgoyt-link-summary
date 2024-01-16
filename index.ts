@@ -55,8 +55,10 @@ const run = async ({ username, gameId }: RunArgs) => {
 
   const sortedEntries = _orderBy(userEntries, 'date', ['desc']);
 
-  const earliestEntry = sortedEntries.at(-1)!;
-  data.firstKnownThreadForUser = earliestEntry.listId;
+  const earliestEntry = sortedEntries.at(-1);
+  if (earliestEntry) {
+    data.firstKnownThreadForUser = earliestEntry.listId;
+  }
 
   const entriesForGame = sortedEntries.filter(
     (entry) => entry.gameId === gameId || entry.expansionFor.includes(gameId)
