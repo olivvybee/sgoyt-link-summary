@@ -8,6 +8,7 @@ import clipboard from 'clipboardy';
 
 import { findNewLists } from './findNewLists';
 import { getUserPostsInList } from './getUserPostsInList';
+import { getBaseGamesForExpansion } from './getBaseGamesForExpansion';
 
 interface Data {
   firstKnownThreadForUser?: string;
@@ -60,8 +61,15 @@ const run = async ({ username, gameId }: RunArgs) => {
     data.firstKnownThreadForUser = earliestEntry.listId;
   }
 
+  const baseGamesForEntry = await getBaseGamesForExpansion(gameId);
+
   const entriesForGame = sortedEntries.filter(
-    (entry) => entry.gameId === gameId || entry.expansionFor.includes(gameId)
+    (entry) =>
+      entry.gameId === gameId || // Entries that match this exact game
+      entry.expansionFor.includes(gameId) || // Entries which are expansions for this game
+      entry.expansionFor.some(
+        (expansionFor) => baseGamesForEntry.includes(expansionFor) // Entries which are expansions for the same base game as this
+      )
   );
 
   const entryLinks = entriesForGame.map((entry) => {
@@ -98,7 +106,9 @@ const argv = yargs(hideBin(process.argv))
   .demandOption('game')
   .parseSync();
 
-const matchUrl = argv.game.match(/boardgamegeek\.com\/boardgame\/(\d+)/);
-const gameId = matchUrl ? matchUrl[1] : argv.game;
+const matchUrl = argv.game.match(
+  /boardgamegeek\.com\/boardgame(expansion)?\/(\d+)/
+);
+const gameId = matchUrl ? matchUrl[2] : argv.game;
 
 run({ username: argv.username, gameId });
