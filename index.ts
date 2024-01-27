@@ -10,6 +10,11 @@ import { findNewLists } from './findNewLists';
 import { getUserPostsInList } from './getUserPostsInList';
 import { getBaseGamesForExpansion } from './getBaseGamesForExpansion';
 
+interface DateAdjustment {
+  entryId: string;
+  date: string;
+}
+
 interface Data {
   firstKnownThreadForUser?: string;
   lastThreadPostId?: string;
@@ -31,11 +36,19 @@ interface RunArgs {
 const run = async ({ username, gameId }: RunArgs) => {
   const dataPath = path.resolve('.', 'data.json');
   if (!fs.existsSync(dataPath)) {
-    fs.writeFileSync(dataPath, '{}');
+    fs.writeFileSync(dataPath, JSON.stringify({}));
   }
 
   const dataFile = fs.readFileSync(dataPath, 'utf-8');
   const data = JSON.parse(dataFile) as Data;
+
+  const adjustmentsPath = path.resolve('.', 'dateAdjustments.json');
+  if (!fs.existsSync(adjustmentsPath)) {
+    fs.writeFileSync(adjustmentsPath, JSON.stringify([]));
+  }
+
+  const adjustmentsFile = fs.readFileSync(adjustmentsPath, 'utf-8');
+  const dateAdjustments = JSON.parse(adjustmentsFile) as DateAdjustment[];
 
   const newLists = await findNewLists(data.lastThreadPostId);
   data.lastThreadPostId = newLists.newLastPostId;
@@ -73,7 +86,11 @@ const run = async ({ username, gameId }: RunArgs) => {
   );
 
   const entryLinks = entriesForGame.map((entry) => {
-    const date = new Date(entry.date).toLocaleString('en-gb', {
+    const entryDate =
+      dateAdjustments.find((adjustment) => adjustment.entryId === entry.id)
+        ?.date || entry.date;
+
+    const date = new Date(entryDate).toLocaleString('en-gb', {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
