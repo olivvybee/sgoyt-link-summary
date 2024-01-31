@@ -28,19 +28,30 @@ const buildForumCode = (entryLinks: string[]) =>
 [size=8]${entryLinks.join('[c] • [/c]')}[/size]
 `.trim();
 
-interface RunArgs {
-  username: string;
-  gameId: string;
-}
+const getDataPath = () => path.resolve('.', 'data.json');
 
-const run = async ({ username, gameId }: RunArgs) => {
+const loadData = () => {
   const dataPath = path.resolve('.', 'data.json');
   if (!fs.existsSync(dataPath)) {
     fs.writeFileSync(dataPath, JSON.stringify({}));
   }
 
   const dataFile = fs.readFileSync(dataPath, 'utf-8');
-  const data = JSON.parse(dataFile) as Data;
+  return JSON.parse(dataFile) as Data;
+};
+
+const saveData = (newData: Data) => {
+  const dataPath = getDataPath();
+  fs.writeFileSync(dataPath, JSON.stringify(newData, null, 2));
+};
+
+interface RunArgs {
+  username: string;
+  gameId: string;
+}
+
+const run = async ({ username, gameId }: RunArgs) => {
+  const data = loadData();
 
   const adjustmentsPath = path.resolve('.', 'dateAdjustments.json');
   if (!fs.existsSync(adjustmentsPath)) {
@@ -53,6 +64,8 @@ const run = async ({ username, gameId }: RunArgs) => {
   const newLists = await findNewLists(data.lastThreadPostId);
   data.lastThreadPostId = newLists.newLastPostId;
   data.listIds = (data.listIds || []).concat(newLists.listIds);
+
+  saveData(data);
 
   const { listIds, firstKnownThreadForUser } = data;
 
@@ -105,7 +118,7 @@ const run = async ({ username, gameId }: RunArgs) => {
 
   clipboard.writeSync(output);
 
-  fs.writeFileSync(dataPath, JSON.stringify(data, null, 2));
+  saveData(data);
 };
 
 const argv = yargs(hideBin(process.argv))
