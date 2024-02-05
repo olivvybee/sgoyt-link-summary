@@ -87,14 +87,15 @@ const run = async ({ username, gameId }: RunArgs) => {
     data.firstKnownThreadForUser = earliestEntry.listId;
   }
 
-  const baseGamesForEntry = await getBaseGamesForExpansion(gameId);
+  const baseGamesForGameId = await getBaseGamesForExpansion(gameId);
 
   const entriesForGame = sortedEntries.filter(
     (entry) =>
       entry.gameId === gameId || // Entries that match this exact game
+      baseGamesForGameId.includes(entry.gameId) || // Entries for the base game for which this is an expansion
       entry.expansionFor.includes(gameId) || // Entries which are expansions for this game
       entry.expansionFor.some(
-        (expansionFor) => baseGamesForEntry.includes(expansionFor) // Entries which are expansions for the same base game as this
+        (expansionFor) => baseGamesForGameId.includes(expansionFor) // Entries which are expansions for the same base game as this
       )
   );
 
