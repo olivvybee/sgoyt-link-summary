@@ -3,6 +3,7 @@ import { sleep } from './sleep';
 
 const BASE_URL_V2 = 'https://www.boardgamegeek.com/xmlapi2';
 const BASE_URL_V1 = 'https://www.boardgamegeek.com/xmlapi';
+const JSON_BASE_URL = 'https://api.geekdo.com/api';
 
 export const makeRequest = async <T>(
   path: string,
@@ -38,4 +39,35 @@ export const makeRequest = async <T>(
   const parsedResponse = parser.parse(body);
 
   return parsedResponse;
+};
+
+export const makeJsonRequest = async <T>(
+  path: string,
+  params: Record<string, string>
+): Promise<T> => {
+  const queryParams = new URLSearchParams(params);
+  const url = `${JSON_BASE_URL}/${path}?${queryParams.toString()}`;
+
+  const response = await fetch(url);
+  const json = await response.json();
+
+  const pageData = json.data;
+
+  const perPage = json.pagination.perPage;
+  const total = json.pagination.total;
+  const numPages = Math.ceil(total / perPage);
+
+  for (let page = 2; page <= numPages; page++) {
+    const pageQueryParams = new URLSearchParams({
+      ...params,
+      page: page.toString(),
+    });
+    const pageUrl = `${JSON_BASE_URL}/${path}?${pageQueryParams.toString()}`;
+
+    const pageResponse = await fetch(pageUrl);
+    const pageJson = await pageResponse.json();
+    pageData.push(pageJson.data);
+  }
+
+  return pageData.flat();
 };

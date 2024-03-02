@@ -7,8 +7,9 @@ import _orderBy from 'lodash/orderBy';
 import clipboard from 'clipboardy';
 
 import { findNewLists } from './findNewLists';
-import { getUserPostsInList } from './getUserPostsInList';
 import { getBaseGamesForExpansion } from './getBaseGamesForExpansion';
+import { getUser } from './getUser';
+import { getUserPosts } from './getUserPosts';
 
 interface DateAdjustment {
   entryId: string;
@@ -16,7 +17,6 @@ interface DateAdjustment {
 }
 
 interface Data {
-  firstKnownThreadForUser?: string;
   lastThreadPostId?: string;
   listIds?: string[];
 }
@@ -53,6 +53,9 @@ interface RunArgs {
 const run = async ({ username, gameId }: RunArgs) => {
   const data = loadData();
 
+  const user = await getUser(username);
+  const posts = await getUserPosts(user.id);
+
   const adjustmentsPath = path.resolve('.', 'dateAdjustments.json');
   if (!fs.existsSync(adjustmentsPath)) {
     fs.writeFileSync(adjustmentsPath, JSON.stringify([]));
@@ -67,37 +70,23 @@ const run = async ({ username, gameId }: RunArgs) => {
 
   saveData(data);
 
-  const { listIds, firstKnownThreadForUser } = data;
+  const { listIds } = data;
 
-  const firstKnownIndex = firstKnownThreadForUser
-    ? listIds.indexOf(firstKnownThreadForUser)
-    : 0;
-  const listsToCheck = listIds.slice(firstKnownIndex);
-
-  const userEntries = (
-    await Promise.all(
-      listsToCheck.map((id) => getUserPostsInList(username, id))
-    )
-  ).flat();
-
-  const sortedEntries = _orderBy(userEntries, 'date', ['desc']);
-
-  const earliestEntry = sortedEntries.at(-1);
-  if (earliestEntry) {
-    data.firstKnownThreadForUser = earliestEntry.listId;
-  }
+  const sortedEntries = _orderBy(posts, 'date', ['desc']);
 
   const baseGamesForGameId = await getBaseGamesForExpansion(gameId);
 
-  const entriesForGame = sortedEntries.filter(
-    (entry) =>
-      entry.gameId === gameId || // Entries that match this exact game
-      baseGamesForGameId.includes(entry.gameId) || // Entries for the base game for which this is an expansion
-      entry.expansionFor.includes(gameId) || // Entries which are expansions for this game
-      entry.expansionFor.some(
-        (expansionFor) => baseGamesForGameId.includes(expansionFor) // Entries which are expansions for the same base game as this
-      )
-  );
+  const entriesForGame = sortedEntries
+    .filter((entry) => listIds.includes(entry.listId)) // Only include SGOYT lists
+    .filter(
+      (entry) =>
+        entry.gameId === gameId || // Entries that match this exact game
+        baseGamesForGameId.includes(entry.gameId) || // Entries for the base game for which this is an expansion
+        entry.expansionFor.includes(gameId) || // Entries which are expansions for this game
+        entry.expansionFor.some(
+          (expansionFor) => baseGamesForGameId.includes(expansionFor) // Entries which are expansions for the same base game as this
+        )
+    );
 
   const entryLinks = entriesForGame.map((entry) => {
     const entryDate =
