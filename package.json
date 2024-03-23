@@ -11,7 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "@types/lodash": "^4.14.202",
-    "@types/node": "^18.19.6",
+    "@types/node": "^20.11.30",
     "@types/yargs": "^17.0.32",
     "clipboardy": "^4.0.0",
     "fast-xml-parser": "^4.3.2",
@@ -21,6 +21,6 @@
     "yargs": "^17.7.2"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   }
 }
