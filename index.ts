@@ -115,9 +115,10 @@ const run = async ({ username, gameId }: RunArgs) => {
   const count = entryLinks.length;
   console.log(`Found ${count} previous ${count === 1 ? 'play' : 'plays'}.`);
 
-  const output = buildForumCode(entryLinks);
-
-  clipboard.writeSync(output);
+  if (count > 0) {
+    const output = buildForumCode(entryLinks);
+    clipboard.writeSync(output);
+  }
 
   saveData(data);
 };
