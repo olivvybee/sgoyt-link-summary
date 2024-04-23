@@ -17,6 +17,7 @@ interface DateAdjustment {
 }
 
 interface Data {
+  username?: string;
   lastThreadPostId?: string;
   listIds?: string[];
 }
@@ -46,14 +47,24 @@ const saveData = (newData: Data) => {
 };
 
 interface RunArgs {
-  username: string;
+  username?: string;
   gameId: string;
 }
 
 const run = async ({ username, gameId }: RunArgs) => {
   const data = loadData();
 
-  const user = await getUser(username);
+  if (username) {
+    data.username = username;
+  } else {
+    if (!data.username) {
+      console.error('Please provide a username using the `-u` option.');
+      process.exit(1);
+    }
+  }
+
+  const user = await getUser(data.username);
+  console.log(user);
   const posts = await getUserPosts(user.id);
 
   const adjustmentsPath = path.resolve('.', 'dateAdjustments.json');
@@ -122,7 +133,6 @@ const argv = yargs(hideBin(process.argv))
     type: 'string',
     description: 'BGG ID of the game to find entries for',
   })
-  .demandOption('username')
   .demandOption('game')
   .parseSync();
 
