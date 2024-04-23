@@ -5,6 +5,8 @@ const BASE_URL_V2 = 'https://www.boardgamegeek.com/xmlapi2';
 const BASE_URL_V1 = 'https://www.boardgamegeek.com/xmlapi';
 const JSON_BASE_URL = 'https://api.geekdo.com/api';
 
+const isRetryableStatus = (status: number) => status === 202 || status === 429;
+
 export const makeRequest = async <T>(
   path: string,
   params: Record<string, string>,
@@ -19,9 +21,11 @@ export const makeRequest = async <T>(
   let response = await fetch(url);
 
   let attempts = 1;
-  while (response.status === 202 && attempts < 6) {
+  while (isRetryableStatus(response.status) && attempts < 6) {
     const delay = 1000 * Math.pow(2, attempts);
-    console.log(`Waiting for ${delay} ms due to 202 response...`);
+    console.log(
+      `Waiting for ${delay} ms due to ${response.status} response...`
+    );
     await sleep(delay);
     response = await fetch(url);
     attempts += 1;
