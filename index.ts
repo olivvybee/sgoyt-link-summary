@@ -64,7 +64,6 @@ const run = async ({ username, gameId }: RunArgs) => {
   }
 
   const user = await getUser(data.username);
-  console.log(user);
   const posts = await getUserPosts(user.id);
 
   const adjustmentsPath = path.resolve('.', 'dateAdjustments.json');
