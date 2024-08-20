@@ -5,7 +5,8 @@
   "main": "index.ts",
   "type": "module",
   "scripts": {
-    "start": "tsx ./index.ts"
+    "start": "tsx ./index.ts",
+    "seed": "tsx ./seed.ts"
   },
   "author": "",
   "license": "ISC",
@@ -14,8 +15,11 @@
     "@types/node": "^20.11.30",
     "@types/yargs": "^17.0.32",
     "clipboardy": "^4.0.0",
+    "dotenv": "^16.4.5",
     "fast-xml-parser": "^4.3.2",
+    "firebase": "^10.13.0",
     "lodash": "^4.17.21",
+    "sqlite3": "^5.1.7",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3",
     "yargs": "^17.7.2"

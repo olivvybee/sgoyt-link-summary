@@ -1,133 +1,32 @@
-import path from 'path';
-import fs from 'fs';
-
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import _orderBy from 'lodash/orderBy';
 import clipboard from 'clipboardy';
 
+import {
+  addEntries,
+  addLists,
+  closeConnection,
+  getAllEntries,
+  getAllGames,
+  getAllLists,
+  getGame,
+  getLastListPostId,
+  setLastListPostId,
+} from './database';
 import { findNewLists } from './findNewLists';
-import { getBaseGamesForExpansion } from './getBaseGamesForExpansion';
 import { getUser } from './getUser';
 import { getUserPosts } from './getUserPosts';
+import { getBaseGamesForExpansion } from './getBaseGamesForExpansion';
+import { Entry } from './types';
+import { buildForumCode } from './buildForumCode';
 
-interface DateAdjustment {
-  entryId: string;
-  date: string;
+const username = process.env.BGG_USERNAME;
+if (!username) {
+  throw new Error('process.env.BGG_USERNAME is not set.');
 }
-
-interface Data {
-  username?: string;
-  lastThreadPostId?: string;
-  listIds?: string[];
-}
-
-const buildForumCode = (entryLinks: string[]) =>
-  `
-[heading][/heading]
-[size=9]Previous plays of this game:[/size]
-[size=8]${entryLinks.join('[c] • [/c]')}[/size]
-`.trim();
-
-const getDataPath = () => path.resolve('.', 'data.json');
-
-const loadData = () => {
-  const dataPath = path.resolve('.', 'data.json');
-  if (!fs.existsSync(dataPath)) {
-    fs.writeFileSync(dataPath, JSON.stringify({}));
-  }
-
-  const dataFile = fs.readFileSync(dataPath, 'utf-8');
-  return JSON.parse(dataFile) as Data;
-};
-
-const saveData = (newData: Data) => {
-  const dataPath = getDataPath();
-  fs.writeFileSync(dataPath, JSON.stringify(newData, null, 2));
-};
-
-interface RunArgs {
-  username?: string;
-  gameId: string;
-}
-
-const run = async ({ username, gameId }: RunArgs) => {
-  const data = loadData();
-
-  if (username) {
-    data.username = username;
-  } else {
-    if (!data.username) {
-      console.error('Please provide a username using the `-u` option.');
-      process.exit(1);
-    }
-  }
-
-  const user = await getUser(data.username);
-  const posts = await getUserPosts(user.id);
-
-  const adjustmentsPath = path.resolve('.', 'dateAdjustments.json');
-  if (!fs.existsSync(adjustmentsPath)) {
-    fs.writeFileSync(adjustmentsPath, JSON.stringify([]));
-  }
-
-  const adjustmentsFile = fs.readFileSync(adjustmentsPath, 'utf-8');
-  const dateAdjustments = JSON.parse(adjustmentsFile) as DateAdjustment[];
-
-  const newLists = await findNewLists(data.lastThreadPostId);
-  data.lastThreadPostId = newLists.newLastPostId;
-  data.listIds = (data.listIds || []).concat(newLists.listIds);
-
-  saveData(data);
-
-  const { listIds } = data;
-
-  const sortedEntries = _orderBy(posts, 'date', ['desc']);
-
-  const baseGamesForGameId = await getBaseGamesForExpansion(gameId);
-
-  const entriesForGame = sortedEntries
-    .filter((entry) => listIds.includes(entry.listId)) // Only include SGOYT lists
-    .filter(
-      (entry) =>
-        entry.gameId === gameId || // Entries that match this exact game
-        baseGamesForGameId.includes(entry.gameId) || // Entries for the base game for which this is an expansion
-        entry.expansionFor.includes(gameId) || // Entries which are expansions for this game
-        entry.expansionFor.some(
-          (expansionFor) => baseGamesForGameId.includes(expansionFor) // Entries which are expansions for the same base game as this
-        )
-    );
-
-  const entryLinks = entriesForGame.map((entry) => {
-    const entryDate =
-      dateAdjustments.find((adjustment) => adjustment.entryId === entry.id)
-        ?.date || entry.date;
-
-    const date = new Date(entryDate).toLocaleString('en-gb', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-    return `[url=${entry.link}]${date}[/url]`;
-  });
-
-  const count = entryLinks.length;
-  console.log(`Found ${count} previous ${count === 1 ? 'play' : 'plays'}.`);
-
-  if (count > 0) {
-    const output = buildForumCode(entryLinks);
-    clipboard.writeSync(output);
-  }
-
-  saveData(data);
-};
 
 const argv = yargs(hideBin(process.argv))
-  .option('username', {
-    alias: 'u',
-    type: 'string',
-    description: 'BGG username to find entries for',
-  })
   .option('game', {
     alias: 'g',
     type: 'string',
@@ -141,4 +40,68 @@ const matchUrl = argv.game.match(
 );
 const gameId = matchUrl ? matchUrl[2] : argv.game;
 
-run({ username: argv.username, gameId });
+const gameData = await getGame(gameId);
+if (!gameData) {
+}
+
+const lastListPostId = await getLastListPostId();
+const { listIds: newListIds, newLastPostId } = await findNewLists(
+  lastListPostId
+);
+await setLastListPostId(newLastPostId);
+await addLists(newListIds);
+
+const lists = await getAllLists();
+const knownEntries = await getAllEntries();
+
+const user = await getUser(username);
+const posts = await getUserPosts(user.id);
+
+const newPosts = posts
+  .filter((post) => lists.includes(post.listId))
+  .filter((post) => !knownEntries.some((entry) => entry.id === post.id));
+const newEntries: Entry[] = newPosts.map((post) => ({
+  id: post.id,
+  date: post.date,
+  game: post.gameId,
+  link: post.link,
+}));
+await addEntries(newEntries);
+
+const entries = [...knownEntries, ...newEntries];
+const sortedEntries = _orderBy(entries, 'date', ['desc']);
+
+const games = await getAllGames();
+
+const thisGame = games.find((game) => game.id === gameId);
+
+const baseGames = await getBaseGamesForExpansion(gameId);
+const expansionsForThisGame = games
+  .filter((game) => thisGame?.expansionFor?.includes(game.id))
+  .map((game) => game.id);
+const otherExpansionsForSameGame = games
+  .filter((game) =>
+    game.expansionFor?.some((expansionFor) => baseGames.includes(expansionFor))
+  )
+  .map((game) => game.id);
+
+const matchingGameIds = [
+  gameId,
+  ...baseGames,
+  ...expansionsForThisGame,
+  ...otherExpansionsForSameGame,
+];
+
+const matchingEntries = sortedEntries.filter((entry) =>
+  matchingGameIds.includes(entry.game)
+);
+
+const count = matchingEntries.length;
+console.log(`Found ${count} previous ${count === 1 ? 'play' : 'plays'}.`);
+
+if (count > 0) {
+  const output = buildForumCode(matchingEntries);
+  clipboard.writeSync(output);
+}
+
+closeConnection();

@@ -1,5 +1,4 @@
 import { makeJsonRequest } from './bgg';
-import { getBaseGamesForExpansion } from './getBaseGamesForExpansion';
 
 interface BGGListItem {
   type: string;
@@ -23,7 +22,6 @@ interface ListEntry {
   listId: string;
   link: string;
   gameId: string;
-  expansionFor: string[];
   date: string;
 }
 
@@ -33,17 +31,11 @@ export const getUserPosts = async (userId: string): Promise<ListEntry[]> => {
     domain: 'boardgame',
   });
 
-  return Promise.all(
-    entries.map(async (entry) => {
-      const baseGameIds = await getBaseGamesForExpansion(entry.item.id);
-      return {
-        id: entry.id,
-        listId: entry.listid,
-        link: `https://boardgamegeek.com${entry.href}`,
-        gameId: entry.item.id,
-        expansionFor: baseGameIds,
-        date: entry.postdate,
-      };
-    })
-  );
+  return entries.map((entry) => ({
+    id: entry.id,
+    listId: entry.listid,
+    link: `https://boardgamegeek.com${entry.href}`,
+    gameId: entry.item.id,
+    date: entry.postdate,
+  }));
 };
