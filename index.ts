@@ -1,10 +1,12 @@
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import _orderBy from 'lodash/orderBy';
+import _uniq from 'lodash/uniq';
 import clipboard from 'clipboardy';
 
 import {
   addEntries,
+  addGames,
   addLists,
   closeConnection,
   getAllEntries,
@@ -20,6 +22,7 @@ import { getUserPosts } from './getUserPosts';
 import { getBaseGamesForExpansion } from './getBaseGamesForExpansion';
 import { Entry } from './types';
 import { buildForumCode } from './buildForumCode';
+import { getGameInfo } from './getGameInfo';
 
 const username = process.env.BGG_USERNAME;
 if (!username) {
@@ -72,6 +75,16 @@ const entries = [...knownEntries, ...newEntries];
 const sortedEntries = _orderBy(entries, 'date', ['desc']);
 
 const games = await getAllGames();
+
+const newGames = posts
+  .map((post) => post.gameId)
+  .filter((id) => !games.some((knownGame) => knownGame.id === id));
+const uniqueNewGames = _uniq(newGames);
+
+if (uniqueNewGames.length) {
+  const newGameData = await getGameInfo(uniqueNewGames);
+  await addGames(newGameData);
+}
 
 const thisGame = games.find((game) => game.id === gameId);
 
