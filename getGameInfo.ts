@@ -51,8 +51,11 @@ export const getGameInfo = async (gameIds: string[]): Promise<Game[]> => {
       throw new Error('No data returned from BGG');
     }
 
+    const itemResponse = response.items.item || [];
+    const items = Array.isArray(itemResponse) ? itemResponse : [itemResponse];
+
     games.push(
-      ...(response.items.item?.map((game) => ({
+      ...(items.map((game) => ({
         id: game.id,
         name: game.name.find((name) => name.type === 'primary')!.value,
         image: game.image,
